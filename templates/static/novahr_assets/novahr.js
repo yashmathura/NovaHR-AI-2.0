@@ -1,0 +1,2 @@
+
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".panel,.hero").forEach((e,i)=>{e.classList.add("fade-in");e.style.animationDelay=Math.min(i,10)*35+"ms"});document.querySelectorAll("form").forEach(f=>f.addEventListener("submit",()=>{const b=f.querySelector('button[type="submit"]');if(b){b.disabled=true;b.dataset.old=b.innerHTML;b.innerHTML="Working…";setTimeout(()=>{b.disabled=false;b.innerHTML=b.dataset.old},3500)}}))});
