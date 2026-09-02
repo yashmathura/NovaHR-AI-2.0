@@ -64,7 +64,12 @@ class Attendance(models.Model):
 
 class Leave(models.Model):
     TYPES = [("CASUAL", "Casual"), ("SICK", "Sick"), ("ANNUAL", "Annual")]
-    STATUS = [("PENDING", "Pending"), ("APPROVED", "Approved"), ("REJECTED", "Rejected")]
+    STATUS = [
+    ("PENDING", "Pending"),
+    ("APPROVED", "Approved"),
+    ("REJECTED", "Rejected"),
+    ("CANCELLED", "Cancelled"),
+]
     employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="leaves")
     leave_type = models.CharField(max_length=20, choices=TYPES)
     start_date = models.DateField()

@@ -159,35 +159,63 @@ def is_salary_change_query(text):
 
 def is_direct_command(text):
     command_patterns = (
+        # Employee management commands must bypass employee analytics.
+        "add employee",
+        "create employee",
+        "onboard employee",
+        "hire employee",
+        "register employee",
+        "new employee",
+        "remove employee",
+        "delete employee",
+        "deactivate employee",
+        "terminate employee",
+        "update employee",
+        "edit employee",
+        "change employee",
+
+        # Task commands.
         "assign task",
         "create task",
         "update task",
         "complete task",
         "finish task",
         "mark task",
+
+        # Payroll commands.
         "generate payroll",
         "process payroll",
         "run payroll",
         "show payroll report",
         "payroll report",
+
+        # Attendance commands.
         "show team attendance",
         "team attendance",
         "department attendance",
+
+        # Leave commands.
         "show pending leaves",
         "list pending leaves",
         "approve leave",
         "reject leave",
         "apply leave",
         "cancel leave",
+
+        # Attendance actions.
         "check in",
         "check out",
         "mark attendance",
+
+        # Employee listing.
         "show all employees",
         "list employees",
     )
 
-    return any(pattern in text for pattern in command_patterns)
-
+    return any(
+        pattern in text
+        for pattern in command_patterns
+    )
 
 def classify_advanced(message):
     message = message or ""

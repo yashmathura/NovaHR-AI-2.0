@@ -132,10 +132,30 @@ def _pretty(intent, data):
         )
 
     if intent == "get_tasks":
-        return (
-            f"You have/accessed "
-            f"{data.get('count', 0)} task(s)."
+        tasks = data.get("tasks", [])
+
+    if not tasks:
+        return "No tasks were found."
+
+    lines = [
+        f"Tasks ({data.get('count', 0)}):"
+    ]
+
+    for task in tasks:
+        due_date = (
+            task.get("due_date")
+            or "No due date"
         )
+
+        lines.append(
+            f"• Task ID {task['id']} — "
+            f"{task['title']} "
+            f"[{task['status']}] "
+            f"Priority: {task['priority']} "
+            f"Due: {due_date}"
+        )
+
+    return "\n".join(lines)
 
     if intent == "list_employees":
         return (
@@ -168,8 +188,27 @@ def _pretty(intent, data):
         )
 
     if intent == "list_pending_leaves":
-        return f"Found {data.get('count', 0)} pending leave request(s)."
+        records = data.get("records", [])
 
+        if not records:
+            return "No pending leave requests were found."
+
+        lines = [
+            "Pending leave requests:"
+        ]
+
+        for leave in records:
+            lines.append(
+                f"• Leave ID {leave['id']} — "
+                f"{leave['employee']} "
+                f"({leave['leave_type'].title()}) "
+                f"{leave['start_date']} to "
+                f"{leave['end_date']} "
+                f"({leave['days']} day(s))"
+            )
+
+        return "\n".join(lines)
+    
     if intent == "get_policy":
         return (
             f"Found {len(data.get('results', []))} "
@@ -292,9 +331,12 @@ def execute_agent_pipeline(user, message):
                     "message": _missing_message(intent),
                 }
 
+            if not end_date:
+                end_date = start_date
+
             data = tools.apply_leave(
                 user,
-                leave_type,
+                leave_type or "CASUAL",
                 str(start_date),
                 str(end_date),
                 kv.get("reason")

@@ -1499,29 +1499,110 @@ def apply_leave(
     leave_type = str(
         leave_type or "CASUAL"
     ).upper()
-
-    allowed_types = {
-        "CASUAL",
-        "SICK",
-        "ANNUAL",
+    quota_fields = {
+        "CASUAL": "casual_leave_quota",
+        "SICK": "sick_leave_quota",
+        "ANNUAL": "annual_leave_quota",
     }
 
-    if leave_type not in allowed_types:
-        leave_type = "CASUAL"
-
-    try:
-        parsed_start = date.fromisoformat(str(start_date))
-        parsed_end = date.fromisoformat(str(end_date))
-    except ValueError:
+    if leave_type not in quota_fields:
         return {
             "success": False,
-            "error": "Invalid date format. Use YYYY-MM-DD.",
+            "error": "Invalid leave type.",
+        }
+
+    try:
+        parsed_start = date.fromisoformat(
+            str(start_date)
+        )
+
+        parsed_end = date.fromisoformat(
+            str(end_date)
+        )
+
+    except (TypeError, ValueError):
+        return {
+            "success": False,
+            "error": (
+                "Invalid date format. "
+                "Use YYYY-MM-DD."
+            ),
         }
 
     if parsed_end < parsed_start:
         return {
             "success": False,
-            "error": "End date cannot be before start date.",
+            "error": (
+                "End date cannot be before "
+                "start date."
+            ),
+        }
+
+    today = timezone.localdate()
+
+    if parsed_start < today:
+        return {
+            "success": False,
+            "error": (
+                "Leave cannot start in the past. "
+                f"Please select {today} or a future date."
+            ),
+        }
+
+    requested_days = (
+        parsed_end - parsed_start
+    ).days + 1
+
+    quota = int(
+        getattr(
+            user,
+            quota_fields[leave_type],
+            0,
+        ) or 0
+    )
+
+    active_leaves = Leave.objects.filter(
+        employee=user,
+        leave_type=leave_type,
+        status__in=[
+            "PENDING",
+            "APPROVED",
+        ],
+    )
+
+    overlapping_leave = active_leaves.filter(
+        start_date__lte=parsed_end,
+        end_date__gte=parsed_start,
+    ).exists()
+
+    if overlapping_leave:
+        return {
+            "success": False,
+            "error": (
+                "This leave overlaps an existing "
+                "pending or approved leave request."
+            ),
+        }
+
+    reserved_days = sum(
+        leave.days
+        for leave in active_leaves
+    )
+
+    remaining = max(
+        0,
+        quota - reserved_days,
+    )
+
+    if requested_days > remaining:
+        return {
+            "success": False,
+            "error": (
+                f"Insufficient {leave_type.lower()} "
+                f"leave balance. Requested "
+                f"{requested_days} day(s), but only "
+                f"{remaining} day(s) are available."
+            ),
         }
 
     leave = Leave.objects.create(
@@ -1529,7 +1610,10 @@ def apply_leave(
         leave_type=leave_type,
         start_date=parsed_start,
         end_date=parsed_end,
-        reason=str(reason or "").strip(),
+        reason=(
+            str(reason or "").strip()
+            or "Requested through NovaHR Agent"
+        ),
         status="PENDING",
     )
 
@@ -1538,9 +1622,11 @@ def apply_leave(
         "leave_id": leave.id,
         "status": leave.status,
         "days": leave.days,
+        "remaining_after_request": (
+            remaining - requested_days
+        ),
     }
-
-
+    
 def cancel_leave(user, leave_id):
     leave = Leave.objects.filter(
         id=leave_id,

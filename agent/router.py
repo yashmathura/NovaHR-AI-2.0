@@ -8,7 +8,7 @@ from agent.nlp_engine import classify
 
 INTENTS = {
     "create_employee": [
-        r"\b(add|create|onboard|hire)\b.*\b(employee|staff)\b",
+        r"\b(add|create|onboard|hire|register)\b.*\b(employee|staff)\b",
         r"\bnew\s+employee\b",
     ],
     "delete_employee": [
@@ -141,75 +141,237 @@ def resolve_intent(text):
         return "UNKNOWN"
 
     priority_rules = (
-        ("generate_payroll", (r"\b(generate|process|run)\b.*\b(payroll|payslip)\b",)),
-        ("get_payroll_report", (r"\b(show|get|view)?\s*payroll\s+(report|summary)\b", r"\bpayroll\s+report\b")),
-        ("approve_leave", (r"\b(approve|accept)\b.*\bleave\b",)),
-        ("reject_leave", (r"\b(reject|deny)\b.*\bleave\b",)),
-        ("cancel_leave", (r"\b(cancel|withdraw)\b.*\bleave\b",)),
-        ("apply_leave", (r"\b(apply|request|take)\b.*\b(leave|vacation|time\s+off)\b", r"\bneed\b.*\bleave\b")),
-        ("assign_task", (r"\bassign\b.*\b(task|work)\b",)),
-        ("update_task", (r"\btask\s+\d+\s+(done|complete|completed|finished)\b", r"\bmark\b.*\btask\b.*\bdone\b")),
-        ("check_out", (r"\bcheck[-\s]?out\b", r"\bpunch\s+out\b")),
-        ("mark_attendance", (r"\bcheck[-\s]?in\b", r"\bmark\s+attendance\b", r"\bpunch\s+in\b")),
-        ("get_team_attendance", (r"\b(team|department)\s+attendance\b", r"\bshow\s+team\s+attendance\b")),
-        ("list_pending_leaves", (r"\b(show|get|list|view)\b.*\bpending\s+leaves?\b", r"\bpending\s+leave\s+(requests?|applications?)\b")),
-        ("get_leave_balance", (r"\bleave\s+balance\b", r"\b(leaves?|vacation|time\s+off)\b.*\b(balance|left|remaining|available)\b")),
-        ("explain_salary_change", (r"\bwhy\b.*\b(salary|payroll)\b.*\b(change|changed|decrease|decreased|lower|reduced)\b", r"\bwhy\s+did\b.*\bsalary\s+change\b")),
-        ("get_policy", (r"\b(working|work)\s+hours?\b", r"\bmiss(?:ing)?\s+(?:a\s+)?punch\b", r"\bleave\s+without\s+approval\b", r"\b(policy|policies|rules?)\b")),
-        ("profile", (r"\b(my\s+profile|my\s+details|who\s+am\s+i)\b",)),
+        (
+            "create_employee",
+            (
+                r"\b(add|create|onboard|hire|register)\b.*\b(employee|staff)\b",
+                r"\bnew\s+employee\b",
+            ),
+        ),
+        (
+            "delete_employee",
+            (
+                r"\b(remove|delete|deactivate|terminate)\b.*\b(employee|staff)\b",
+            ),
+        ),
+        (
+            "update_employee",
+            (
+                r"\b(update|edit|change)\b.*\b(employee|staff)\b",
+            ),
+        ),
+        (
+            "generate_payroll",
+            (
+                r"\b(generate|process|run)\b.*\b(payroll|payslip)\b",
+            ),
+        ),
+        (
+            "get_payroll_report",
+            (
+                r"\b(show|get|view)?\s*payroll\s+(report|summary)\b",
+                r"\bpayroll\s+report\b",
+            ),
+        ),
+        (
+            "approve_leave",
+            (
+                r"\b(approve|accept)\b.*\bleave\b",
+            ),
+        ),
+        (
+            "reject_leave",
+            (
+                r"\b(reject|deny)\b.*\bleave\b",
+            ),
+        ),
+        (
+            "cancel_leave",
+            (
+                r"\b(cancel|withdraw)\b.*\bleave\b",
+            ),
+        ),
+        (
+            "apply_leave",
+            (
+                r"\b(apply|request|take)\b.*\b(leave|vacation|time\s+off)\b",
+                r"\bneed\b.*\bleave\b",
+            ),
+        ),
+        (
+            "assign_task",
+            (
+                r"\bassign\b.*\b(task|work)\b",
+            ),
+        ),
+        (
+            "update_task",
+            (
+                r"\btask\s+\d+\s+(done|complete|completed|finished)\b",
+                r"\bmark\b.*\btask\b.*\bdone\b",
+            ),
+        ),
+        (
+            "check_out",
+            (
+                r"\bcheck[-\s]?out\b",
+                r"\bpunch\s+out\b",
+            ),
+        ),
+        (
+            "mark_attendance",
+            (
+                r"\bcheck[-\s]?in\b",
+                r"\bmark\s+attendance\b",
+                r"\bpunch\s+in\b",
+            ),
+        ),
+        (
+            "get_team_attendance",
+            (
+                r"\b(team|department)\s+attendance\b",
+                r"\bshow\s+team\s+attendance\b",
+            ),
+        ),
+        (
+            "list_pending_leaves",
+            (
+                r"\b(show|get|list|view)\b.*\bpending\s+leaves?\b",
+                r"\bpending\s+leave\s+(requests?|applications?)\b",
+            ),
+        ),
+        (
+            "get_leave_balance",
+            (
+                r"\bleave\s+balance\b",
+                r"\b(leaves?|vacation|time\s+off)\b.*\b(balance|left|remaining|available)\b",
+            ),
+        ),
+        (
+            "explain_salary_change",
+            (
+                r"\bwhy\b.*\b(salary|payroll)\b.*\b(change|changed|decrease|decreased|lower|reduced)\b",
+                r"\bwhy\s+did\b.*\bsalary\s+change\b",
+            ),
+        ),
+        (
+            "get_policy",
+            (
+                r"\b(working|work)\s+hours?\b",
+                r"\bmiss(?:ing)?\s+(?:a\s+)?punch\b",
+                r"\bleave\s+without\s+approval\b",
+                r"\b(policy|policies|rules?)\b",
+            ),
+        ),
+        (
+            "profile",
+            (
+                r"\b(my\s+profile|my\s+details|who\s+am\s+i)\b",
+            ),
+        ),
     )
 
     for intent, patterns in priority_rules:
-        if any(re.search(pattern, t, re.IGNORECASE) for pattern in patterns):
+        if any(
+            re.search(pattern, t, re.IGNORECASE)
+            for pattern in patterns
+        ):
             return intent
 
     try:
         nlp_result = classify(t) or {}
         nlp_intent = nlp_result.get("intent")
-        nlp_confidence = float(nlp_result.get("confidence", 0) or 0)
-        if nlp_intent in INTENTS and nlp_confidence >= 0.70:
+        nlp_confidence = float(
+            nlp_result.get("confidence", 0) or 0
+        )
+
+        if (
+            nlp_intent in INTENTS
+            and nlp_confidence >= 0.70
+        ):
             return nlp_intent
+
     except Exception:
         pass
 
     try:
         learned = predict_intent(t) or {}
         learned_intent = learned.get("intent")
-        learned_confidence = float(learned.get("confidence", 0) or 0)
-        if learned_intent in INTENTS and learned_confidence >= 0.75:
+        learned_confidence = float(
+            learned.get("confidence", 0) or 0
+        )
+
+        if (
+            learned_intent in INTENTS
+            and learned_confidence >= 0.75
+        ):
             return learned_intent
+
     except Exception:
         pass
 
     for intent, patterns in INTENTS.items():
         for pattern in patterns:
             try:
-                if re.search(pattern, t, re.IGNORECASE):
+                if re.search(
+                    pattern,
+                    t,
+                    re.IGNORECASE,
+                ):
                     return intent
             except re.error:
                 continue
 
     return "UNKNOWN"
 
+
 def extract_employee_id(text):
-    match = re.search(r"\bE\d{3,}\b", text or "", re.IGNORECASE)
-    return match.group(0).upper() if match else None
+    match = re.search(
+        r"\bE\d{3,}\b",
+        text or "",
+        re.IGNORECASE,
+    )
+
+    return (
+        match.group(0).upper()
+        if match
+        else None
+    )
 
 
-def extract_leave_type(text):
+def extract_leave_type(text, default=None):
+    """
+    Returns the explicitly requested leave type.
+
+    IMPORTANT:
+    For queries like 'leave balance', returning CASUAL as a
+    default would incorrectly hide Sick and Annual balances.
+    """
+
     t = (text or "").upper()
 
     aliases = {
         "CASUAL": ("CASUAL", "CL"),
         "SICK": ("SICK", "MEDICAL", "SL"),
-        "ANNUAL": ("ANNUAL", "VACATION", "EARNED", "AL"),
+        "ANNUAL": (
+            "ANNUAL",
+            "VACATION",
+            "EARNED",
+            "AL",
+        ),
     }
 
     for leave_type, values in aliases.items():
-        if any(re.search(rf"\b{re.escape(value)}\b", t) for value in values):
+        if any(
+            re.search(
+                rf"\b{re.escape(value)}\b",
+                t,
+            )
+            for value in values
+        ):
             return leave_type
 
-    return "CASUAL"
+    return default
 
 
 def extract_status(text):
@@ -244,7 +406,10 @@ def extract_status(text):
 def extract_priority(text):
     t = (text or "").upper()
 
-    if re.search(r"\b(URGENT|CRITICAL)\b", t):
+    if re.search(
+        r"\b(URGENT|CRITICAL)\b",
+        t,
+    ):
         return "HIGH"
 
     if re.search(r"\bHIGH\b", t):
@@ -271,19 +436,27 @@ def extract_dates(text):
     if "today" in t:
         return today, today
 
-    matches = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", t)
+    matches = re.findall(
+        r"\b\d{4}-\d{2}-\d{2}\b",
+        t,
+    )
 
     if not matches:
         return None, None
 
     try:
-        start_date = date.fromisoformat(matches[0])
+        start_date = date.fromisoformat(
+            matches[0]
+        )
+
         end_date = (
             date.fromisoformat(matches[1])
             if len(matches) > 1
             else start_date
         )
+
         return start_date, end_date
+
     except ValueError:
         return None, None
 

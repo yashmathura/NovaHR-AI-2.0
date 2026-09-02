@@ -52,7 +52,10 @@ def dashboard(request):
     today = timezone.localdate()
     scope = Attendance.objects.all() if user.role in ("ADMIN","HR","FINANCE") else Attendance.objects.filter(employee=user)
     if user.role == "MANAGER": scope = scope.filter(employee__department=user.department)
-    employees = User.objects.filter(role="EMPLOYEE")
+    employees = User.objects.filter(
+    role="EMPLOYEE",
+    is_active=True,
+)
     if user.role == "MANAGER": employees = employees.filter(department=user.department)
     context = {
         "user": user, "today": today, "employees_count": employees.count(),
@@ -135,8 +138,12 @@ def employees(request):
         return HttpResponseForbidden("Access denied")
 
     qs = User.objects.filter(
-        role="EMPLOYEE"
-    ).select_related("department", "manager")
+    role="EMPLOYEE",
+    is_active=True,
+).select_related(
+    "department",
+    "manager",
+)
 
     if request.user.role == "MANAGER":
         qs = qs.filter(department=request.user.department)
@@ -178,15 +185,168 @@ def attendance(request):
 @login_required
 def leave_page(request):
     user = request.user
-    if request.method == "POST":
-        Leave.objects.create(employee=user, leave_type=request.POST["leave_type"], start_date=request.POST["start_date"], end_date=request.POST["end_date"], reason=request.POST["reason"])
-        Notification.objects.create(employee=user, title="Leave submitted", message="Your leave request has been submitted for approval.")
-        return redirect("leave_page")
-    qs = Leave.objects.select_related("employee").order_by("-applied_at")
-    if user.role == "EMPLOYEE": qs = qs.filter(employee=user)
-    elif user.role == "MANAGER": qs = qs.filter(employee__department=user.department)
-    return render(request, "leave.html", {"leaves": qs, "can_decide": user.role in ("ADMIN","HR","MANAGER")})
+    error = None
 
+    if request.method == "POST":
+
+        leave_type = (
+            request.POST.get("leave_type")
+            or ""
+        ).upper()
+
+        quota_fields = {
+            "CASUAL": "casual_leave_quota",
+            "SICK": "sick_leave_quota",
+            "ANNUAL": "annual_leave_quota",
+        }
+
+        try:
+            start_date = date.fromisoformat(
+                request.POST.get(
+                    "start_date",
+                    "",
+                )
+            )
+
+            end_date = date.fromisoformat(
+                request.POST.get(
+                    "end_date",
+                    "",
+                )
+            )
+
+        except ValueError:
+            error = "Invalid leave dates."
+
+        else:
+
+            if leave_type not in quota_fields:
+
+                error = "Invalid leave type."
+
+            elif end_date < start_date:
+
+                error = (
+                    "End date cannot be before "
+                    "start date."
+                )
+
+            else:
+
+                requested_days = (
+                    end_date - start_date
+                ).days + 1
+
+                quota = int(
+                    getattr(
+                        user,
+                        quota_fields[leave_type],
+                        0,
+                    ) or 0
+                )
+
+                active = Leave.objects.filter(
+                    employee=user,
+                    leave_type=leave_type,
+                    status__in=[
+                        "PENDING",
+                        "APPROVED",
+                    ],
+                )
+
+                reserved_days = sum(
+                    leave.days
+                    for leave in active
+                )
+
+                overlap = active.filter(
+                    start_date__lte=end_date,
+                    end_date__gte=start_date,
+                ).exists()
+
+                remaining = max(
+                    0,
+                    quota - reserved_days,
+                )
+
+                if overlap:
+
+                    error = (
+                        "This leave overlaps an existing "
+                        "pending or approved request."
+                    )
+
+                elif requested_days > remaining:
+
+                    error = (
+                        f"Insufficient "
+                        f"{leave_type.lower()} leave "
+                        f"balance. Only {remaining} "
+                        f"day(s) are available."
+                    )
+
+                else:
+
+                    Leave.objects.create(
+                        employee=user,
+                        leave_type=leave_type,
+                        start_date=start_date,
+                        end_date=end_date,
+                        reason=(
+                            request.POST.get(
+                                "reason",
+                                ""
+                            ).strip()
+                        ),
+                    )
+
+                    Notification.objects.create(
+                        employee=user,
+                        title="Leave submitted",
+                        message=(
+                            "Your leave request has been "
+                            "submitted for approval."
+                        ),
+                    )
+
+                    return redirect(
+                        "leave_page"
+                    )
+
+    qs = Leave.objects.select_related(
+        "employee"
+    ).order_by(
+        "-applied_at"
+    )
+
+    if user.role == "EMPLOYEE":
+
+        qs = qs.filter(
+            employee=user
+        )
+
+    elif user.role == "MANAGER":
+
+        qs = qs.filter(
+            employee__department=user.department
+        )
+
+    return render(
+        request,
+        "leave.html",
+        {
+            "leaves": qs,
+            "can_decide": (
+                user.role
+                in (
+                    "ADMIN",
+                    "HR",
+                    "MANAGER",
+                )
+            ),
+            "error": error,
+        },
+    )
 @login_required
 def leave_decision(request, leave_id):
     if request.user.role not in ("ADMIN","HR","MANAGER"): return HttpResponseForbidden("Access denied")
@@ -209,7 +369,10 @@ def payroll_page(request):
         approved=Leave.objects.filter(employee=emp,status="APPROVED",start_date__year=year,start_date__month=month).count()
         Payroll.objects.update_or_create(employee=emp,month=month,year=year,defaults={"base_salary":emp.salary,"working_days":22,"present_days":present,"absent_days":absent,"leave_days":approved})
         return redirect("payroll")
-    employees=User.objects.filter(role="EMPLOYEE")
+    employees=User.objects.filter(
+    role="EMPLOYEE",
+    is_active=True
+)
     payslips=Payroll.objects.select_related("employee").order_by("-year","-month")[:50]
     return render(request,"payroll.html",{"employees":employees,"payslips":payslips,"today":today})
 
@@ -236,7 +399,8 @@ def tasks_page(request):
     qs=Task.objects.select_related("assigned_to","assigned_by")
     if user.role=="EMPLOYEE": qs=qs.filter(assigned_to=user)
     elif user.role=="MANAGER": qs=qs.filter(assigned_to__department=user.department)
-    return render(request,"tasks.html",{"tasks":qs,"employees":User.objects.filter(role="EMPLOYEE")})
+    return render(request,"tasks.html",{"tasks":qs,"employees":User.objects.filter(role="EMPLOYEE",
+    is_active=True)})
 
 @login_required
 def knowledge(request):
